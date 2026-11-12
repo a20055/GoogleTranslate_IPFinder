@@ -99,9 +99,18 @@ jobs:
     # ===================== 6. 收集产物 =====================
     - name: Collect APK artifacts
       run: |
+        echo "=== Debug APKs ==="
+        find android/app/build/outputs/apk/debug -name "*.apk" -exec ls -lh {} \;
+        echo "=== Release APKs ==="
+        find android/app/build/outputs/apk/release -name "*.apk" -exec ls -lh {} \;
+
         mkdir -p release-output
-        cp android/app/build/outputs/apk/debug/app-debug.apk release-output/gtipfinder-debug.apk
-        cp android/app/build/outputs/apk/release/app-release-unsigned.apk release-output/gtipfinder-release-unsigned.apk
+        # Debug 产物
+        find android/app/build/outputs/apk/debug -name "*.apk" -print -exec cp {} release-output/gtipfinder-debug.apk \;
+        # Release 产物 (带签名或 unsigned)
+        find android/app/build/outputs/apk/release -name "*.apk" -print -exec cp {} release-output/gtipfinder-release.apk \;
+
+        echo "=== Release Output ==="
         ls -lh release-output/
 
     # ===================== 7. 上传 Artifact =====================
@@ -163,6 +172,6 @@ jobs:
         prerelease: ${{ steps.prerelease.outputs.prerelease }}
         files: |
           release-output/gtipfinder-debug.apk
-          release-output/gtipfinder-release-unsigned.apk
+          release-output/gtipfinder-release.apk
           android/README.md
         fail_on_unmatched_files: true

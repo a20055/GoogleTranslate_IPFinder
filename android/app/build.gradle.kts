@@ -7,6 +7,13 @@ android {
     namespace = "com.gtipfinder"
     compileSdk = 34
 
+    // 使用 debug keystore 签名 release 构建，保证 APK 可直接安装
+    signingConfigs {
+        getByName("debug") {
+            // debug keystore 路径保持默认
+        }
+    }
+
     defaultConfig {
         applicationId = "com.gtipfinder"
         minSdk = 24
@@ -18,6 +25,8 @@ android {
     buildTypes {
         release {
             isMinifyEnabled = false
+            // release 构建复用 debug 签名，无需额外 keystore
+            signingConfig = signingConfigs.getByName("debug")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"

@@ -96,37 +96,30 @@ jobs:
     # ===================== 6. 收集产物 =====================
     - name: Collect APK artifacts
       run: |
-        # 先彻底 dump 一下 apk 目录结构，避免路径猜错
-        echo "=== All APKs found ==="
-        find android -name "*.apk" -exec ls -lh {} \; || echo "(none)"
+        set -euo pipefail
+        # Gradle 标准输出路径（编译类型固定为 debug / release，无 flavor）
+        DEBUG_SRC="android/app/build/outputs/apk/debug/"
+        RELEASE_SRC="android/app/build/outputs/apk/release/"
+
+        echo "=== Debug APK dir ==="
+        ls -la "$DEBUG_SRC" || echo "(debug dir missing)"
+        echo "=== Release APK dir ==="
+        ls -la "$RELEASE_SRC" || echo "(release dir missing)"
+        echo "=== 兜底：全项目搜所有 APK ==="
+        find . -name "*.apk" 2>/dev/null || echo "(none)"
 
         mkdir -p release-output
 
-        # Debug APK — 用 find 抓到什么就拷什么，不管子路径
-        DEBUG_APK=$(find android -path "*/outputs/apk/*/debug*" -name "*.apk" 2>/dev/null | head -1)
-        echo "DEBUG_APK=$DEBUG_APK"
-        if [ -n "$DEBUG_APK" ]; then
-          cp "$DEBUG_APK" release-output/gtipfinder-debug.apk
-        else
-          echo "WARNING: debug APK not found, looking in whole project..."
-          find android -name "*.apk" -path "*/debug*" | head -1
-          find android -name "*.apk" | head -5
-        fi
+        # Debug APK — 标准路径直接拷
+        cp "${DEBUG_SRC}"*.apk release-output/gtipfinder-debug.apk
+        # Release APK — 如果产物是 unsigned 也照样拷过来
+        cp "${RELEASE_SRC}"*.apk release-output/gtipfinder-release.apk
 
-        # Release APK — 用 find 抓到什么就拷什么
-        RELEASE_APK=$(find android -path "*/outputs/apk/*/release*" -name "*.apk" 2>/dev/null | head -1)
-        echo "RELEASE_APK=$RELEASE_APK"
-        if [ -n "$RELEASE_APK" ]; then
-          cp "$RELEASE_APK" release-output/gtipfinder-release.apk
-        else
-          echo "WARNING: release APK not found"
-        fi
-
-        echo "=== Release output dir ==="
+        echo "=== 最终 release-output ==="
         ls -lh release-output/
-        # 只有两个 APK 都存在才算成功
-        test -f release-output/gtipfinder-debug.apk || { echo "FAIL: debug apk missing"; exit 1; }
-        test -f release-output/gtipfinder-release.apk || { echo "FAIL: release apk missing"; exit 1; }
+
+        test -f release-output/gtipfinder-debug.apk
+        test -f release-output/gtipfinder-release.apk
 
     # ===================== 7. 上传 Artifact =====================
     - name: Upload APKs as artifacts

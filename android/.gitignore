@@ -1,0 +1,46 @@
+# Gradle
+*.iml
+.gradle
+/local.properties
+/.idea
+.DS_Store
+/build
+/captures
+.externalNativeBuild
+.cxx
+local.properties
+
+# Gradle Wrapper jar (二进制，不入库)
+!gradle/wrapper/gradle-wrapper.jar
+
+# Android Studio
+.idea/
+*.iml
+*.iws
+*.ipr
+.DS_Store
+
+# Build
+build/
+app/build/
+releases/
+
+# Keystore
+*.keystore
+*.jks
+*.p12
+*.pem
+
+# Generated files
+gen/
+
+# Proguard/R8
+*.txt
+
+# Kotlin
+*.class
+*.log
+
+# External Native
+.externalNativeBuild/
+.cxx/

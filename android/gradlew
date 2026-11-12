@@ -1,0 +1,30 @@
+#!/bin/sh
+
+#
+# Gradle 启动脚本 (Unix)
+# 第一次运行时会自动下载 gradle-8.7-bin.zip
+#
+
+# 尝试设置 APP_HOME
+if [ -z "$APP_HOME" ] && [ -f "$HOME/.gradle" ]; then
+    APP_HOME="$HOME/.gradle"
+fi
+
+APP_HOME="${APP_HOME:-$(cd "$(dirname "$0")" && pwd)}"
+CLASSPATH="$APP_HOME/gradle/wrapper/gradle-wrapper.jar"
+
+if [ ! -f "$CLASSPATH" ]; then
+    echo "Downloading Gradle Wrapper..."
+    WGET_URL="https://raw.githubusercontent.com/gradle/gradle/v8.7.0/gradle/wrapper/gradle-wrapper.jar"
+    if command -v curl >/dev/null 2>&1; then
+        curl -sL -o "$CLASSPATH" "$WGET_URL"
+    elif command -v wget >/dev/null 2>&1; then
+        wget -q -O "$CLASSPATH" "$WGET_URL"
+    else
+        echo "ERROR: curl or wget not found, please install one"
+        exit 1
+    fi
+fi
+
+# 启动 Gradle
+exec java -Xmx2048m -Dorg.gradle.appname=gradlew -classpath "$CLASSPATH" org.gradle.wrapper.GradleWrapperMain "$@"

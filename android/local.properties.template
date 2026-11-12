@@ -1,0 +1,5 @@
+# 本地 SDK 路径 —— 首次构建前请按实际环境修改
+# 或通过 Android Studio 打开项目后自动生成此文件
+#sdk.dir=/Users/yourname/Library/Android/sdk           # macOS
+#sdk.dir=C:\\Users\\yourname\\AppData\\Local\\Android\\Sdk   # Windows
+#sdk.dir=/home/yourname/Android/Sdk                    # Linux

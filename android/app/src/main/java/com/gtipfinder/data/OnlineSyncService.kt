@@ -39,8 +39,9 @@ class OnlineSyncService {
                             val ips = body.split(Regex("\\s+"))
                                 .filter { it.isNotBlank() && isValidIp(it) }
                                 .toSet()
-                            if (ips.isNotEmpty()) return@withContext ips
-                        }
+                            // 显式加 else Unit 避免 Kotlin 把外层块当作表达式
+                            if (ips.isNotEmpty()) return@withContext ips else Unit
+                        } else Unit
                     }
                 } catch (_: Exception) {
                     // 当前 URL 失败，尝试下一个

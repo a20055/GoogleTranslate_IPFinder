@@ -1,13 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- 网络访问权限 - IP测试和在线同步 -->
+    <!-- 网络访问权限 - IP 测试和在线同步 -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
-    <!-- 存储权限 - 用于导出Hosts和IP列表 -->
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
-        android:maxSdkVersion="28" />
+    <!--
+        关于存储权限：
+        应用设置、IP 库、测速结果全部保存在应用私有目录
+        (context.getSharedPreferences / context.filesDir)，
+        Android 10+ 分区存储下不需要 WRITE_EXTERNAL_STORAGE。
+        如果以后要加"导出到公共下载目录"功能，再加 MANAGE_EXTERNAL_STORAGE。
+    -->
 
     <application
         android:allowBackup="true"

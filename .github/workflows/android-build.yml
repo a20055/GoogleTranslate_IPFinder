@@ -88,10 +88,10 @@ jobs:
     # ===================== 5. 构建 APK =====================
     - name: Build APKs (clean + assembleDebug + assembleRelease)
       run: |
+        set -euo pipefail
         cd android
-        ./gradlew clean --no-daemon 2>&1 | tail -5
-        ./gradlew assembleDebug assembleRelease --no-daemon 2>&1 | tee build.log | tail -40
-        echo "=== Build finished ==="
+        ./gradlew clean --no-daemon
+        ./gradlew assembleDebug assembleRelease --no-daemon
 
     # ===================== 6. 收集产物 =====================
     - name: Collect APK artifacts

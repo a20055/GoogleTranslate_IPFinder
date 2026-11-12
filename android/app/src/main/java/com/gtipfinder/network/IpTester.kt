@@ -6,6 +6,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.sync.Semaphore
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.IOException
@@ -44,7 +45,7 @@ class IpTester(
     ): IpTestResult = withContext(Dispatchers.IO) {
         val client = OkHttpClientFactory.createForIpTest(
             targetIp = ip,
-            serverHostname = testHostname,
+            serverHostname = testHost,
             timeoutSec = timeoutMs / 1000L
         )
 
@@ -54,7 +55,7 @@ class IpTester(
 
         val request = Request.Builder()
             .url(url)
-            .header("Host", testHostname)
+            .header("Host", testHost)
             .get()
             .build()
 

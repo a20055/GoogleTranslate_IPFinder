@@ -4,6 +4,7 @@ import com.gtipfinder.network.OkHttpClientFactory
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
 import okhttp3.Request
 
@@ -52,31 +53,31 @@ class OnlineSyncService {
                     client.newCall(request).execute().use { response ->
                         if (response.isSuccessful) {
                             val body = response.body?.string()
-                            if (body.isNullOrBlank()) {
-                                lastErrorUrl = url
-                                lastErrorMessage = "响应体为空"
-                                continue
-                            }
-                            // 健壮解析：按行分割 → trim → 过滤空行和注释行 → 验证 IP
-                            val ips = body.lineSequence()
-                                .map { it.trim() }
-                                .filter { it.isNotBlank() && !it.startsWith('#') }
-                                .flatMap { line ->
-                                    // 每行可能含逗号/空格分隔的多个 IP
-                                    line.split(Regex("[\\s,;]+"))
-                                }
-                                .map { it.trim() }
-                                .filter { it.isNotBlank() && isValidIp(it) }
-                                .toSet()
+                            if (!body.isNullOrBlank()) {
+                                // 健壮解析：按行分割 → trim → 过滤空行和注释行 → 验证 IP
+                                val ips = body.lineSequence()
+                                    .map { it.trim() }
+                                    .filter { it.isNotBlank() && !it.startsWith('#') }
+                                    .flatMap { line ->
+                                        // 每行可能含逗号/空格分隔的多个 IP
+                                        line.split(Regex("[\\s,;]+"))
+                                    }
+                                    .map { it.trim() }
+                                    .filter { it.isNotBlank() && isValidIp(it) }
+                                    .toSet()
 
-                            if (ips.isNotEmpty()) {
-                                return@withContext SyncResult(
-                                    serviceName = service.name,
-                                    ips = ips
-                                )
+                                if (ips.isNotEmpty()) {
+                                    return@withContext SyncResult(
+                                        serviceName = service.name,
+                                        ips = ips
+                                    )
+                                } else {
+                                    lastErrorUrl = url
+                                    lastErrorMessage = "响应中未找到有效 IP"
+                                }
                             } else {
                                 lastErrorUrl = url
-                                lastErrorMessage = "响应中未找到有效 IP"
+                                lastErrorMessage = "响应体为空"
                             }
                         } else {
                             lastErrorUrl = url
@@ -86,8 +87,8 @@ class OnlineSyncService {
                 } catch (e: Exception) {
                     lastErrorUrl = url
                     lastErrorMessage = e.message ?: "未知错误"
-                    continue
                 }
+                // 继续尝试下一个 URL（for 循环自动前进）
             }
 
             // 所有备用 URL 都失败
@@ -125,12 +126,14 @@ class OnlineSyncService {
         suspend fun syncAllServices(): Pair<Set<String>, List<SyncResult>> {
             val syncService = OnlineSyncService()
 
-            // 并行请求所有 OnlineService
-            val results: List<SyncResult> = BuiltinIpDatabase.onlineServices
-                .map { service ->
-                    async { syncService.syncFromService(service) }
-                }
-                .awaitAll()
+            // coroutineScope 给 async/awaitAll 提供 CoroutineScope receiver
+            val results: List<SyncResult> = coroutineScope {
+                BuiltinIpDatabase.onlineServices
+                    .map { service ->
+                        async { syncService.syncFromService(service) }
+                    }
+                    .awaitAll()
+            }
 
             // 合并成功的结果
             val merged = mutableSetOf<String>()

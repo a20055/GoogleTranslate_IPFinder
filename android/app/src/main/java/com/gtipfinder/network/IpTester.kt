@@ -1,5 +1,6 @@
 package com.gtipfinder.network
 
+import android.util.Log
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
@@ -34,6 +35,10 @@ class IpTester(
     private val defaultRepeat: Int = 3,
     private val defaultConcurrency: Int = 32
 ) {
+    companion object {
+        private const val TAG = "IpTester"
+    }
+
     // 测试进度状态
     private val _progress = MutableStateFlow(TestProgress(0, 0, 0))
     val progress = _progress.asStateFlow()
@@ -114,16 +119,31 @@ class IpTester(
         
         // 使用信号量控制并发
         val semaphore = Semaphore(concurrency)
+
+        // DEBUG log：验证并发设置是否真实传入
+        Log.d(TAG, "batchSpeedTest: ips=${ips.size}, concurrency=$concurrency, " +
+                "repeat=$repeat, timeoutMs=$timeoutMs, semaphorePermits=$concurrency")
         
         // Channel 作为中间管道：launch 里 send，flow builder 里 receive + emit
         val resultChannel = Channel<IpTestResult>(capacity = shuffled.size)
         
         // 在给定 scope 内启动测试协程（独立于 flow builder 协程）
         testJob = scope.launch(Dispatchers.IO) {
+            var activeCount = 0
+            var peakActive = 0
+            val activeLock = kotlinx.coroutines.sync.Mutex()
+            val runStart = System.currentTimeMillis()
+
             val testJobs = shuffled.map { ip ->
                 async {
                     semaphore.acquire()
                     try {
+                        // 记录活跃峰值：验证 Semaphore 并发控制是否生效
+                        activeLock.withLock {
+                            activeCount++
+                            if (activeCount > peakActive) peakActive = activeCount
+                        }
+
                         val latencies = mutableListOf<Long>()
                         var failed = false
                         
@@ -159,12 +179,18 @@ class IpTester(
                             _progress.value.available
                         )
                     } finally {
+                        activeLock.withLock { activeCount-- }
                         semaphore.release()
                     }
                 }
             }
             
             testJobs.forEach { it.join() }
+            val totalMs = System.currentTimeMillis() - runStart
+            Log.d(TAG, "batchSpeedTest 完成: concurrency=$concurrency, peakActive=$peakActive, " +
+                    "totalIps=${ips.size}, 耗时=${totalMs}ms, " +
+                    "并发控制${if (peakActive <= concurrency) "✅生效" else "⚠️超出！"} " +
+                    "(峰值≤$concurrency)")
             resultChannel.close()
         }
         

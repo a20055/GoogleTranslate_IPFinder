@@ -55,14 +55,18 @@ class IpTester(
             timeoutSec = timeoutMs / 1000L
         )
 
-        val url = requestTemplate.format(
-            if (ip.contains(':')) "[$ip]" else ip
-        )
+        // 关键：URL 里必须写 hostname，不能写 IP！
+        // 这样 OkHttp 才会去解析 hostname → 触发自定义 DNS 钩子
+        // → DNS 返回目标 IP → TLS SNI = hostname → 伪装访问成功
+        // 如果 URL 里写 IP，DNS 钩子根本不触发 → 直接连 IP
+        // → TLS SNI = IP（GWS 拒绝）→ 全部 Fail
+        val url = requestTemplate.replace("{}", testHostname)
 
         val request = Request.Builder()
             .url(url)
-            .header("Host", testHostname)
             .get()
+            // 注意：不要手动加 Host header！OkHttp 自动从 URL host 推导
+            // 手动加可能干扰 OkHttp 的行为
             .build()
 
         val timeSource = TimeSource.Monotonic

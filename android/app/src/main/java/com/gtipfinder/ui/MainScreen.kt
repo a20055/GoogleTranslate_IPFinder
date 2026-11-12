@@ -1,5 +1,10 @@
 package com.gtipfinder.ui
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
+import android.widget.Toast
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -11,6 +16,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -267,7 +273,12 @@ fun SpeedTestScreen(viewModel: MainViewModel) {
 
 /**
  * 单条测速结果项
+ * 
+ * 交互：
+ * - 点击：弹出菜单（复制 IP / 复制完整行 / 复制 Hosts 格式）
+ * - 长按：直接复制 IP 到剪贴板
  */
+@OptIn(ExperimentalMaterial3Api::class, androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 fun ResultItem(ip: String, latencyMs: Long) {
     val latencyColor = when {
@@ -276,6 +287,9 @@ fun ResultItem(ip: String, latencyMs: Long) {
         else -> Color(0xFFC62828)
     }
     
+    val context = LocalContext.current
+    var showMenu by remember { mutableStateOf(false) }
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(8.dp)
@@ -283,6 +297,10 @@ fun ResultItem(ip: String, latencyMs: Long) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
+                .combinedClickable(
+                    onClick = { showMenu = true },
+                    onLongClick = { copyToClipboard(context, ip, "IP", ip) }
+                )
                 .padding(horizontal = 12.dp, vertical = 8.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
@@ -307,6 +325,36 @@ fun ResultItem(ip: String, latencyMs: Long) {
             )
         }
     }
+
+    DropdownMenu(
+        expanded = showMenu,
+        onDismissRequest = { showMenu = false }
+    ) {
+        DropdownMenuItem(
+            text = { Text("复制 IP") },
+            leadingIcon = { Icon(Icons.Default.ContentCopy, null) },
+            onClick = { showMenu = false; copyToClipboard(context, ip, "IP", ip) }
+        )
+        DropdownMenuItem(
+            text = { Text("复制完整行") },
+            leadingIcon = { Icon(Icons.Default.ContentPaste, null) },
+            onClick = { showMenu = false; copyToClipboard(context, "$ip  ${latencyMs}ms", "测速结果", ip) }
+        )
+        DropdownMenuItem(
+            text = { Text("复制 Hosts 格式") },
+            leadingIcon = { Icon(Icons.Default.Gavel, null) },
+            onClick = { showMenu = false; copyToClipboard(context, "[$ip] translate.googleapis.com", "Hosts", ip) }
+        )
+    }
+}
+
+/**
+ * 将文本复制到系统剪贴板并 Toast 提示
+ */
+private fun copyToClipboard(context: Context, text: String, label: String, toastMsg: String) {
+    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+    clipboard.setPrimaryClip(ClipData.newPlainText(label, text))
+    Toast.makeText(context, "已复制: $toastMsg", Toast.LENGTH_SHORT).show()
 }
 
 /**

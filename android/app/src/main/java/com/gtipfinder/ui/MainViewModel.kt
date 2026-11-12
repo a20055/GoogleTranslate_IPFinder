@@ -60,8 +60,10 @@ class MainViewModel : ViewModel() {
         
         _isTesting.value = true
         _speedTestResults.value = emptyList()
+        _progress.value = TestProgress(0, 0, 0)
         val available = mutableListOf<Pair<String, Long>>()
         val seen = mutableSetOf<String>()
+        var availableCount = 0
         
         viewModelScope.launch(Dispatchers.IO) {
             ipTester.batchSpeedTest(
@@ -73,25 +75,26 @@ class MainViewModel : ViewModel() {
             ).collect { result ->
                 when (result) {
                     is IpTestResult.Success -> {
-                        // 计算平均延迟并更新
                         val latencyMs = result.latencyMs
                         if (!seen.contains(result.ip)) {
                             seen.add(result.ip)
                             available.add(result.ip to latencyMs)
-                            // 按延迟排序（延迟越低越优）
                             _speedTestResults.value = available.sortedBy { it.second }
                         }
-                        // 更新可用数量
-                        _progress.value = _progress.value.copy(
-                            available = _progress.value.available + 1
-                        )
+                        availableCount++
                     }
                     is IpTestResult.Fail -> {
-                        // 测试失败，仅更新进度
+                        // 失败不影响可用计数
                     }
                 }
-                // 同步进度
-                _progress.value = ipTester.progress.value
+                // 关键：合并 IpTester 的 completed/total 和我们自己维护的 available
+                // 不能整体赋值 ipTester.progress.value —— 它的 available 永远是 0！
+                val tester = ipTester.progress.value
+                _progress.value = TestProgress(
+                    completed = tester.completed,
+                    total = tester.total,
+                    available = availableCount
+                )
             }
             _isTesting.value = false
         }

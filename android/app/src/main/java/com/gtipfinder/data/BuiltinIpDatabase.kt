@@ -344,13 +344,15 @@ object BuiltinIpDatabase {
     /**
      * 在线 IP 库同步地址列表
      * 
-     * 每个 OnlineService 内的 urls 是串行备用（一个挂了换下一个），
-     * 多个 OnlineService 之间是并行请求（OnlineSyncService.syncAllServices）。
+     * 只保留两个精选源（官方完整 IPv4 已移除，数据量大但质量低）：
+     * - 扩展 IPv4 库 (Ponderfly, 8819 行，最大且更新活跃)
+     * - 官方 IPv4 库 (GoodCoder666, 1254 行，精选活跃 IP)
      * 
+     * 每个 OnlineService 内的 urls 是串行备用；
+     * 多个 OnlineService 之间是并行请求（OnlineSyncService.syncAllServices）。
      * 镜像优先级：jsdelivr CDN（国内最稳）→ ghproxy → GitHub 直连
      */
     val onlineServices = listOf(
-        // 扩展 IPv4 库优先（Ponderfly，8819 行，最大且更新活跃）
         OnlineService(
             name = "扩展 IPv4 库",
             urls = listOf(
@@ -359,22 +361,12 @@ object BuiltinIpDatabase {
                 "https://raw.githubusercontent.com/Ponderfly/GoogleTranslateIpCheck/master/src/GoogleTranslateIpCheck/GoogleTranslateIpCheck/ip.txt"
             )
         ),
-        // 官方 IPv4 库（GoodCoder666，1254 行，精选活跃 IP）
         OnlineService(
             name = "官方 IPv4 库",
             urls = listOf(
                 "https://cdn.jsdelivr.net/gh/GoodCoder666/gtdb@main/src/ip.txt",
                 "https://ghproxy.net/https://raw.githubusercontent.com/GoodCoder666/gtdb/main/src/ip.txt",
                 "https://raw.githubusercontent.com/GoodCoder666/gtdb/main/src/ip.txt"
-            )
-        ),
-        // 官方完整 IPv4（GoodCoder666，23242 行，全量 GWS 段）
-        OnlineService(
-            name = "官方完整 IPv4",
-            urls = listOf(
-                "https://cdn.jsdelivr.net/gh/GoodCoder666/gtdb@main/full/v4.txt",
-                "https://ghproxy.net/https://raw.githubusercontent.com/GoodCoder666/gtdb/refs/heads/main/full/v4.txt",
-                "https://raw.githubusercontent.com/GoodCoder666/gtdb/refs/heads/main/full/v4.txt"
             )
         )
     )

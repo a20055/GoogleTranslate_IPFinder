@@ -1,7 +1,6 @@
 package com.gtipfinder.network
 
 import okhttp3.*
-import okhttp3.dnsoverhttps.DnsOverHttps
 import java.net.InetAddress
 import java.net.UnknownHostException
 import java.util.concurrent.TimeUnit

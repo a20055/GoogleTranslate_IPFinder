@@ -1,0 +1,153 @@
+name: Build Android APK
+
+# 触发条件：push 到 main 分支 或 手动 dispatch
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'android/**'
+      - '.github/workflows/android*.yml'
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'Release 标签 (默认自动生成)'
+        required: false
+        default: ''
+      prerelease:
+        description: '是否为 PreRelease'
+        required: false
+        default: 'false'
+
+permissions:
+  contents: write
+
+# 避免同一分支并发跑多个同名 workflow
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-release:
+    name: Build GTIPFinder APK & Create Release
+    runs-on: ubuntu-22.04
+
+    steps:
+    # ===================== 1. 检出代码 =====================
+    - name: Checkout source
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    # ===================== 2. 安装 JDK 17 (AGP 8.5 兼容) =====================
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+        cache: 'gradle'
+        cache-dependency-path: android/**/*.gradle.kts
+
+    # ===================== 3. 配置 Android SDK =====================
+    - name: Set up Android SDK
+      uses: android-actions/setup-android@v3
+      with:
+        api-levels: '34'
+        build-tools: '34.0.0'
+        platform-tools: true
+        ndk: false
+
+    - name: Configure local.properties
+      run: |
+        echo "sdk.dir=$ANDROID_HOME" > android/local.properties
+        echo "ANDROID_HOME=$ANDROID_HOME"
+
+    # ===================== 4. Gradle Wrapper =====================
+    - name: Download gradle-wrapper.jar
+      run: |
+        cd android
+        mkdir -p gradle/wrapper
+        curl -sL -o gradle/wrapper/gradle-wrapper.jar \
+          https://raw.githubusercontent.com/gradle/gradle/v8.7.0/gradle/wrapper/gradle-wrapper.jar
+        chmod +x gradlew
+
+    # ===================== 5. 构建 Release APK =====================
+    - name: Build Debug APK
+      run: |
+        cd android
+        ./gradlew assembleDebug --no-daemon --stacktrace 2>&1 | tee build.log
+
+    - name: Build Release APK
+      run: |
+        cd android
+        ./gradlew assembleRelease --no-daemon --stacktrace 2>&1 | tee build-release.log
+
+    # ===================== 6. 收集产物 =====================
+    - name: Collect APK artifacts
+      run: |
+        mkdir -p release-output
+        cp android/app/build/outputs/apk/debug/app-debug.apk release-output/gtipfinder-debug.apk
+        cp android/app/build/outputs/apk/release/app-release-unsigned.apk release-output/gtipfinder-release-unsigned.apk
+        ls -lh release-output/
+
+    # ===================== 7. 上传 Artifact =====================
+    - name: Upload APKs as artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: gtipfinder-apks
+        path: release-output/
+        if-no-files-found: error
+
+    # ===================== 8. 创建 GitHub Release =====================
+    - name: Determine release tag
+      id: tag
+      run: |
+        if [ -n "${{ github.event.inputs.release_tag }}" ]; then
+          echo "tag=${{ github.event.inputs.release_tag }}" >> "$GITHUB_OUTPUT"
+        else
+          echo "tag=android-v1.0.0-$(date +%Y%m%d)" >> "$GITHUB_OUTPUT"
+        fi
+
+    - name: Determine prerelease flag
+      id: prerelease
+      run: |
+        echo "prerelease=${{ github.event.inputs.prerelease == 'true' }}" >> "$GITHUB_OUTPUT"
+
+    - name: Create GitHub Release & upload APKs
+      uses: softprops/action-gh-release@v2
+      with:
+        tag_name: ${{ steps.tag.outputs.tag }}
+        name: GTIPFinder Android ${{ steps.tag.outputs.tag }}
+        body: |
+          ## GTIPFinder Android — 谷歌翻译 IP 测速工具
+
+          移植自 [GoodCoder666/GoogleTranslate_IPFinder](https://github.com/GoodCoder666/GoogleTranslate_IPFinder)，Android 原生实现。
+
+          ### 功能
+          - 批量测速 (1500+ 内置 GWS IP，并发 + 多次重复取平均)
+          - 在线 IP 库同步 (ghproxy 镜像 + GitHub 直连)
+          - CIDR 网段扫描
+          - 单 IP 稳定性调试
+          - Hosts 片段生成/导出
+          - 可调节超时 / 重复次数 / 并发数
+
+          ### 技术栈
+          - **Kotlin 1.9** + **Jetpack Compose** + **Material3**
+          - **OkHttp 4.12** (自定义 DNS 劫持 + TLS/SNI 伪装)
+          - **Kotlin Coroutines** 并发
+
+          ### 核心原理
+          与 Python 原版一致：OkHttp 自定义 DNS 让 `translate.googleapis.com` 解析到目标 IP，但 TLS 握手 SNI 和 HTTP Host Header 保留原域名。
+
+          ### 版本信息
+          - compileSdk / targetSdk: 34
+          - minSdk: 24 (Android 7.0+)
+          - JDK: 17
+
+          ---
+          _构建于 ${{ github.run_id }} · ${{ github.event.head_commit.message }}_
+        prerelease: ${{ steps.prerelease.outputs.prerelease }}
+        files: |
+          release-output/gtipfinder-debug.apk
+          release-output/gtipfinder-release-unsigned.apk
+          android/README.md
+        fail_on_unmatched_files: true

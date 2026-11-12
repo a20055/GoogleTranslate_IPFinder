@@ -44,9 +44,13 @@ class OnlineSyncService {
 
             for (url in service.urls) {
                 try {
+                    // 注意：不要手动设置 Accept-Encoding header！
+                    // OkHttp 的 BridgeInterceptor 默认只自动处理 gzip（用 GzipSource）。
+                    // 如果我们手动声明 Accept-Encoding，它就不会自动解压；
+                    // 如果服务器返回 Brotli (br) 压缩，OkHttp 又不支持 brotli，
+                    // 拿到的就是二进制垃圾 —— 这正是之前只解析出 3-98 个"IP"的根因。
                     val request = Request.Builder()
                         .url(url)
-                        .header("Accept-Encoding", "gzip, deflate, br")
                         .get()
                         .build()
 

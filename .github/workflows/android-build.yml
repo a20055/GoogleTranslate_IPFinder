@@ -99,19 +99,37 @@ jobs:
     # ===================== 6. 收集产物 =====================
     - name: Collect APK artifacts
       run: |
-        echo "=== Debug APKs ==="
-        find android/app/build/outputs/apk/debug -name "*.apk" -exec ls -lh {} \;
-        echo "=== Release APKs ==="
-        find android/app/build/outputs/apk/release -name "*.apk" -exec ls -lh {} \;
+        # 先彻底 dump 一下 apk 目录结构，避免路径猜错
+        echo "=== All APKs found ==="
+        find android -name "*.apk" -exec ls -lh {} \; || echo "(none)"
 
         mkdir -p release-output
-        # Debug 产物
-        find android/app/build/outputs/apk/debug -name "*.apk" -print -exec cp {} release-output/gtipfinder-debug.apk \;
-        # Release 产物 (带签名或 unsigned)
-        find android/app/build/outputs/apk/release -name "*.apk" -print -exec cp {} release-output/gtipfinder-release.apk \;
 
-        echo "=== Release Output ==="
+        # Debug APK — 用 find 抓到什么就拷什么，不管子路径
+        DEBUG_APK=$(find android -path "*/outputs/apk/*/debug*" -name "*.apk" 2>/dev/null | head -1)
+        echo "DEBUG_APK=$DEBUG_APK"
+        if [ -n "$DEBUG_APK" ]; then
+          cp "$DEBUG_APK" release-output/gtipfinder-debug.apk
+        else
+          echo "WARNING: debug APK not found, looking in whole project..."
+          find android -name "*.apk" -path "*/debug*" | head -1
+          find android -name "*.apk" | head -5
+        fi
+
+        # Release APK — 用 find 抓到什么就拷什么
+        RELEASE_APK=$(find android -path "*/outputs/apk/*/release*" -name "*.apk" 2>/dev/null | head -1)
+        echo "RELEASE_APK=$RELEASE_APK"
+        if [ -n "$RELEASE_APK" ]; then
+          cp "$RELEASE_APK" release-output/gtipfinder-release.apk
+        else
+          echo "WARNING: release APK not found"
+        fi
+
+        echo "=== Release output dir ==="
         ls -lh release-output/
+        # 只有两个 APK 都存在才算成功
+        test -f release-output/gtipfinder-debug.apk || { echo "FAIL: debug apk missing"; exit 1; }
+        test -f release-output/gtipfinder-release.apk || { echo "FAIL: release apk missing"; exit 1; }
 
     # ===================== 7. 上传 Artifact =====================
     - name: Upload APKs as artifacts

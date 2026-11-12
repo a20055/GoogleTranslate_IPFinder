@@ -9,14 +9,16 @@ package com.gtipfinder.data
 object BuiltinIpDatabase {
 
     /**
-     * 默认测试目标域名
+     * 默认测试目标域名（www.google.com 最稳定，任何 GWS IP 都能响应）
      */
-    const val TEST_HOST = "translate.googleapis.com"
+    const val TEST_HOST = "www.google.com"
 
     /**
      * 需要写入 Hosts 的域名列表
+     * 测速出的可用 IP 应该写入这些域名的 Hosts 条目
      */
     val HOSTS_DOMAINS = listOf(
+        "www.google.com",
         "translate.googleapis.com",
         "translate-pa.googleapis.com"
     )

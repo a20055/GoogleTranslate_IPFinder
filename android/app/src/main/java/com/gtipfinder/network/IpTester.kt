@@ -30,8 +30,9 @@ import kotlin.time.TimeSource
  *   避免嵌套协程中直接 emit 导致 IllegalStateException
  */
 class IpTester(
-    private val testHostname: String = "translate.googleapis.com",
-    private val requestTemplate: String = "https://{}/translate_a/element.js",
+    private val testHostname: String = "www.google.com",
+    // 用 / 首页即可测速连通性，比 API 路径更稳定（任何 Google GWS IP 都能响应）
+    private val requestTemplate: String = "https://{}/",
     private val defaultTimeout: Long = 1500,
     private val defaultRepeat: Int = 3,
     private val defaultConcurrency: Int = 32

@@ -343,7 +343,7 @@ fun ResultItem(ip: String, latencyMs: Long) {
         DropdownMenuItem(
             text = { Text("复制 Hosts 格式") },
             leadingIcon = { Icon(Icons.Default.Gavel, null) },
-            onClick = { showMenu = false; copyToClipboard(context, "$ip translate.googleapis.com", "Hosts", ip) }
+            onClick = { showMenu = false; copyToClipboard(context, "$ip www.google.com", "Hosts", ip) }
         )
     }
 }

@@ -350,14 +350,7 @@ object BuiltinIpDatabase {
      * 镜像优先级：jsdelivr CDN（国内最稳）→ ghproxy → GitHub 直连
      */
     val onlineServices = listOf(
-        OnlineService(
-            name = "官方 IPv4 库",
-            urls = listOf(
-                "https://cdn.jsdelivr.net/gh/GoodCoder666/gtdb@main/src/ip.txt",
-                "https://ghproxy.net/https://raw.githubusercontent.com/GoodCoder666/gtdb/main/src/ip.txt",
-                "https://raw.githubusercontent.com/GoodCoder666/gtdb/main/src/ip.txt"
-            )
-        ),
+        // 扩展 IPv4 库优先（Ponderfly，8819 行，最大且更新活跃）
         OnlineService(
             name = "扩展 IPv4 库",
             urls = listOf(
@@ -366,6 +359,16 @@ object BuiltinIpDatabase {
                 "https://raw.githubusercontent.com/Ponderfly/GoogleTranslateIpCheck/master/src/GoogleTranslateIpCheck/GoogleTranslateIpCheck/ip.txt"
             )
         ),
+        // 官方 IPv4 库（GoodCoder666，1254 行，精选活跃 IP）
+        OnlineService(
+            name = "官方 IPv4 库",
+            urls = listOf(
+                "https://cdn.jsdelivr.net/gh/GoodCoder666/gtdb@main/src/ip.txt",
+                "https://ghproxy.net/https://raw.githubusercontent.com/GoodCoder666/gtdb/main/src/ip.txt",
+                "https://raw.githubusercontent.com/GoodCoder666/gtdb/main/src/ip.txt"
+            )
+        ),
+        // 官方完整 IPv4（GoodCoder666，23242 行，全量 GWS 段）
         OnlineService(
             name = "官方完整 IPv4",
             urls = listOf(

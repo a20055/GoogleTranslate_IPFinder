@@ -39,9 +39,7 @@ class OnlineSyncService {
                             val ips = body.split(Regex("\\s+"))
                                 .filter { it.isNotBlank() && isValidIp(it) }
                                 .toSet()
-                            if (ips.isNotEmpty()) {
-                                return@withContext ips
-                            }
+                            if (ips.isNotEmpty()) return@withContext ips
                         }
                     }
                 } catch (_: Exception) {

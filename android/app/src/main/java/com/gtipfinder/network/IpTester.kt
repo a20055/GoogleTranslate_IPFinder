@@ -10,7 +10,6 @@ import kotlinx.coroutines.sync.Semaphore
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.IOException
-import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.TimeSource
 
 /**
@@ -20,9 +19,16 @@ import kotlin.time.TimeSource
  * - 使用 TLS/SNI 伪装访问 translate.googleapis.com
  * - 并发测试多个 IP（Semaphore 控制并发数）
  * - 多次测试取平均延迟（repeat 次数）
+ * 
+ * 修复说明：
+ * - 构造函数参数统一命名为 testHostname（与 OkHttpClientFactory 保持一致）
+ * - 显式 import kotlinx.coroutines.sync.Semaphore（通配符 import 不覆盖子包）
+ * - batchSpeedTest 重构：用 Channel 作为中间管道传递结果，
+ *   launch 协程内 send()，flow builder 内 receive + emit()，
+ *   避免嵌套协程中直接 emit 导致 IllegalStateException
  */
 class IpTester(
-    private val testHost: String = "translate.googleapis.com",
+    private val testHostname: String = "translate.googleapis.com",
     private val requestTemplate: String = "https://{}/translate_a/element.js",
     private val defaultTimeout: Long = 1500,
     private val defaultRepeat: Int = 3,
@@ -80,16 +86,14 @@ class IpTester(
      * 批量测速 - 核心方法
      * 
      * 移植原 SpeedtestThread 逻辑：
-     * 1. 随机打乱 IP 顺序
+     * 1. 随机打乱 IP 顺序（与 Python 版行为一致）
      * 2. 使用 Semaphore 控制并发
      * 3. 每个 IP 重复测试 N 次，取平均延迟
      * 4. 两次测试间隔 1 秒（避免触发频率限制）
      * 
-     * @param ips 待测试的 IP 列表
-     * @param repeat 每个 IP 的测试次数
-     * @param concurrency 并发数
-     * @param timeoutMs 单次请求超时
-     * @return 按延迟排序的可用 IP 列表
+     * 关键实现：用 Channel 作为 launch 协程与 flow builder 之间的结果管道。
+     * launch 内部只做 Channel.send()（跨协程合法），
+     * flow builder 内做 Channel.receive + emit()（保持在 Flow 的 collector 协程栈上，合法）。
      */
     fun batchSpeedTest(
         ips: List<String>,
@@ -107,8 +111,10 @@ class IpTester(
         // 使用信号量控制并发
         val semaphore = Semaphore(concurrency)
         
-        val results = Channel<Pair<String, Double>>(capacity = shuffled.size)
+        // Channel 作为中间管道：launch 里 send，flow builder 里 receive + emit
+        val resultChannel = Channel<IpTestResult>(capacity = shuffled.size)
         
+        // 在给定 scope 内启动测试协程（独立于 flow builder 协程）
         testJob = scope.launch(Dispatchers.IO) {
             val testJobs = shuffled.map { ip ->
                 async {
@@ -131,7 +137,7 @@ class IpTester(
                                 }
                                 is IpTestResult.Fail -> {
                                     failed = true
-                                    emit(result)
+                                    resultChannel.send(result)
                                 }
                             }
                         }
@@ -139,8 +145,7 @@ class IpTester(
                         if (!failed && latencies.isNotEmpty()) {
                             // 计算平均延迟（与 Python 版一致）
                             val avgLatency = latencies.average()
-                            results.send(ip to avgLatency)
-                            emit(IpTestResult.Success(ip, avgLatency.toLong()))
+                            resultChannel.send(IpTestResult.Success(ip, avgLatency.toLong()))
                         }
                         
                         // 更新进度
@@ -156,10 +161,16 @@ class IpTester(
             }
             
             testJobs.forEach { it.join() }
-            results.close()
+            resultChannel.close()
         }
         
-        // 等待完成
+        // 在 flow builder 内从 Channel 接收结果并 emit
+        // 这样 emit 始终在 flow collector 协程栈上，合法且不会崩溃
+        for (result in resultChannel) {
+            emit(result)
+        }
+        
+        // 确保测试协程完成后再退出 flow
         testJob?.join()
     }
 

@@ -55,6 +55,9 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.4")
     implementation("androidx.activity:activity-compose:1.9.2")
 
+    // Material3 组件库 (提供 Theme.Material3.* 和 attr/colorSurface 等 XML 主题资源)
+    implementation("com.google.android.material:material:1.12.0")
+
     // Compose BOM
     implementation(platform("androidx.compose:compose-bom:2024.09.00"))
     implementation("androidx.compose.ui:ui")

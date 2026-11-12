@@ -85,16 +85,13 @@ jobs:
           https://raw.githubusercontent.com/gradle/gradle/v8.7.0/gradle/wrapper/gradle-wrapper.jar
         chmod +x gradlew
 
-    # ===================== 5. 构建 Release APK =====================
-    - name: Build Debug APK
+    # ===================== 5. 构建 APK =====================
+    - name: Build APKs (clean + assembleDebug + assembleRelease)
       run: |
         cd android
-        ./gradlew assembleDebug --no-daemon --stacktrace 2>&1 | tee build.log
-
-    - name: Build Release APK
-      run: |
-        cd android
-        ./gradlew assembleRelease --no-daemon --stacktrace 2>&1 | tee build-release.log
+        ./gradlew clean --no-daemon 2>&1 | tail -5
+        ./gradlew assembleDebug assembleRelease --no-daemon 2>&1 | tee build.log | tail -40
+        echo "=== Build finished ==="
 
     # ===================== 6. 收集产物 =====================
     - name: Collect APK artifacts

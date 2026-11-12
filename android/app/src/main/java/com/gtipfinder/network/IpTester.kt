@@ -7,8 +7,9 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.Semaphore
-import okhttp3.OkHttpClient
+import kotlinx.coroutines.sync.withLock
 import okhttp3.Request
 import java.io.IOException
 import kotlin.time.TimeSource
@@ -131,7 +132,7 @@ class IpTester(
         testJob = scope.launch(Dispatchers.IO) {
             var activeCount = 0
             var peakActive = 0
-            val activeLock = kotlinx.coroutines.sync.Mutex()
+            val activeLock = Mutex()
             val runStart = System.currentTimeMillis()
 
             val testJobs = shuffled.map { ip ->

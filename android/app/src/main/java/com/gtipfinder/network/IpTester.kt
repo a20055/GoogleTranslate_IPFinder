@@ -51,7 +51,7 @@ class IpTester(
     ): IpTestResult = withContext(Dispatchers.IO) {
         val client = OkHttpClientFactory.createForIpTest(
             targetIp = ip,
-            serverHostname = testHost,
+            serverHostname = testHostname,
             timeoutSec = timeoutMs / 1000L
         )
 
@@ -61,7 +61,7 @@ class IpTester(
 
         val request = Request.Builder()
             .url(url)
-            .header("Host", testHost)
+            .header("Host", testHostname)
             .get()
             .build()
 

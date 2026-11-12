@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.gtipfinder.data.BuiltinIpDatabase
 import com.gtipfinder.data.OnlineSyncService
+import com.gtipfinder.data.OnlineSyncService.SyncResult
 import com.gtipfinder.network.IpTester
 import com.gtipfinder.network.IpTestResult
 import com.gtipfinder.network.TestProgress
@@ -152,24 +153,55 @@ class MainViewModel : ViewModel() {
 
     /**
      * 从在线服务同步 IP 库
+     * 
+     * v2: OnlineSyncService.syncAllServices() 现在返回 Pair<Set<String>, List<SyncResult>>，
+     *     第一个元素是合并去重后的 IP 集合，第二个是每个 OnlineService 的详细状态。
      */
     fun syncFromOnline() {
         viewModelScope.launch(Dispatchers.IO) {
-            _syncStatus.value = SyncStatus.Loading("正在同步 IP 库...")
+            _syncStatus.value = SyncStatus.Loading("正在并行同步所有 IP 库...")
             
             try {
-                val syncedIps = OnlineSyncService.syncAllServices()
+                // 并行请求所有 OnlineService，拿到合并 IP + 每个服务的详细状态
+                val (syncedIps, results) = OnlineSyncService.syncAllServices()
+                
+                // 统计成败
+                val successCount = results.count { it.ips != null }
+                val failCount = results.size - successCount
                 
                 if (syncedIps.isNotEmpty()) {
                     // 合并内置 IP 和在线 IP，去重
-                    val merged = (BuiltinIpDatabase.ipv4List.toSet() + syncedIps).toList()
+                    val oldSize = _ipLibrary.value.size
+                    val merged = (_ipLibrary.value.toSet() + syncedIps).toList()
                     _ipLibrary.value = merged
-                    _syncStatus.value = SyncStatus.Success("同步成功，共 ${syncedIps.size} 个新 IP，总计 ${merged.size} 个")
+                    
+                    val newCount = merged.size - oldSize
+                    val detail = buildServiceDetail(results)
+                    _syncStatus.value = SyncStatus.Success(
+                        "同步成功: ${successCount}/${results.size} 服务可用，新增 ${newCount} 个 IP，总计 ${merged.size} 个\n$detail"
+                    )
                 } else {
-                    _syncStatus.value = SyncStatus.Error("所有在线服务均不可用")
+                    // 所有服务都失败了
+                    val detail = buildServiceDetail(results)
+                    _syncStatus.value = SyncStatus.Error(
+                        "所有在线服务均不可用 (${failCount}/${results.size})\n$detail"
+                    )
                 }
             } catch (e: Exception) {
                 _syncStatus.value = SyncStatus.Error("同步失败: ${e.message}")
+            }
+        }
+    }
+
+    /**
+     * 根据 SyncResult 列表生成可读的成功/失败详情文本
+     */
+    private fun buildServiceDetail(results: List<SyncResult>): String {
+        return results.joinToString("\n") { r ->
+            if (r.ips != null) {
+                "  ✓ ${r.serviceName}: ${r.ips.size} 个 IP"
+            } else {
+                "  ✗ ${r.serviceName}: ${r.errorMessage ?: "未知错误"}"
             }
         }
     }

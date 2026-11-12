@@ -343,11 +343,17 @@ object BuiltinIpDatabase {
 
     /**
      * 在线 IP 库同步地址列表
+     * 
+     * 每个 OnlineService 内的 urls 是串行备用（一个挂了换下一个），
+     * 多个 OnlineService 之间是并行请求（OnlineSyncService.syncAllServices）。
+     * 
+     * 镜像优先级：jsdelivr CDN（国内最稳）→ ghproxy → GitHub 直连
      */
     val onlineServices = listOf(
         OnlineService(
             name = "官方 IPv4 库",
             urls = listOf(
+                "https://cdn.jsdelivr.net/gh/GoodCoder666/gtdb@main/src/ip.txt",
                 "https://ghproxy.net/https://raw.githubusercontent.com/GoodCoder666/gtdb/main/src/ip.txt",
                 "https://raw.githubusercontent.com/GoodCoder666/gtdb/main/src/ip.txt"
             )
@@ -355,6 +361,7 @@ object BuiltinIpDatabase {
         OnlineService(
             name = "扩展 IPv4 库",
             urls = listOf(
+                "https://cdn.jsdelivr.net/gh/Ponderfly/GoogleTranslateIpCheck@master/src/GoogleTranslateIpCheck/GoogleTranslateIpCheck/ip.txt",
                 "https://ghproxy.net/https://raw.githubusercontent.com/Ponderfly/GoogleTranslateIpCheck/master/src/GoogleTranslateIpCheck/GoogleTranslateIpCheck/ip.txt",
                 "https://raw.githubusercontent.com/Ponderfly/GoogleTranslateIpCheck/master/src/GoogleTranslateIpCheck/GoogleTranslateIpCheck/ip.txt"
             )
@@ -362,6 +369,7 @@ object BuiltinIpDatabase {
         OnlineService(
             name = "官方完整 IPv4",
             urls = listOf(
+                "https://cdn.jsdelivr.net/gh/GoodCoder666/gtdb@main/full/v4.txt",
                 "https://ghproxy.net/https://raw.githubusercontent.com/GoodCoder666/gtdb/refs/heads/main/full/v4.txt",
                 "https://raw.githubusercontent.com/GoodCoder666/gtdb/refs/heads/main/full/v4.txt"
             )
